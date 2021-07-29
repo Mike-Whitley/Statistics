@@ -1,0 +1,396 @@
+---
+title: "Assignment 2"
+author: "Mike Whitley 55503405"
+date: "21/03/2021"
+output: word_document
+---
+
+
+the response variable (or the dependent variable) always belongs on the y-axis. so my price needs to be normally distributed
+
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+
+```{r}
+#install.packages("RColorBrewer") #lets me access nice colours for plots and graphs :)
+```
+
+###Multiple Linear Regression
+
+Use the dataset CarData.txt to investigate the relationship between the price of cars and a range of possible factors that might influence it. The factors recorded are as follows:
+
+Price: suggested retail price of the used car still in excellent condition.
+Mileage: miles the car has been driven
+Make: manufacturer of the car
+Model: model of the car – ignore this for now
+Type: body type such as sedan, coupe, etc.
+Cylinder: number of cylinders in the engine
+Litre: a more specific measure of engine size
+Doors: number of doors
+Cruise: indicator variable representing whether the car has cruise control (1 = cruise)
+Sound: indicator variable representing whether the car has upgraded speakers (1 = upgraded)
+Leather: indicator variable representing whether the car has leather seats (1 = leather)
+
+
+###1. Start by exploring the data. Use R and create summary statistics and plots for each variable (ignore the variable for the model of car).
+ 
+What I want to look for here is aspects such as possible outliers and trends I can immediately see see 
+I think I want to have a quick look at all variables visually see if I can spot anything then do a bit more in-depth with anything I see as important and I want to check my response variable price is normally distributed
+
+```{r}
+CarData <- read.delim("CarData.txt") #read in the CarData.txt textfile
+head(CarData)
+```
+```{r}
+#there are lots of NA columns that hold no relevance so will drop all na columns 
+CarData <- CarData[,colSums(is.na(CarData))<nrow(CarData)]
+head(CarData)
+```
+
+```{r}
+par(mfrow=c(1,2))
+library(RColorBrewer)
+coul2 <- brewer.pal(5, "YlOrRd") 
+coul <- brewer.pal(5, "YlGn") 
+
+
+hist(CarData$Price,col = coul2)
+hist(log(CarData$Price), col=coul)
+
+```
+As I want to make sure my distribution of errors/residuals is normal the easiest way to ensure this is by having a normally distributed response variable therefor based on this I will change price to its logged equivalent which fits better 
+```{r}
+CarData[,c(1)] <- log(CarData[,c(1)])
+```
+
+
+Make, Model, Type = categorical   #ignore Model
+Cruise, Sound, Leather = Binary
+Price, Mileage, Cylinder, Litre, Doors = numerical 
+
+```{r}
+#first up looking at categorical data
+par(mfrow=c(1,2))
+counts <- table(CarData$Make)
+barplot(counts, main="Car Distribution Make",
+   xlab="Make of Car",ylab="Number of Cars",col=coul)
+
+counts <- table(CarData$Type)
+barplot(counts, main="Car Distribution Type",
+   xlab="Type of Car",  ylab="Number of Cars", col=coul2)
+
+```
+Can immediately see that there is more Hondas than almost all the other 5 combined and More sedans than the other 4 combined
+so the question is would this skew any other data we are trying to analyze later so might have to analyze both with honda/sedan and without for a fair picture especially if features differ?
+this could be relevant if Hondas are cheaper or more expensive could infer that Make has a big influence on price have to look at that when doing multiple variables 
+
+```{r}
+library(dplyr)
+par(mfrow=c(1,2))
+Data_Without_Honda <- subset(CarData, Make != "Honda") #give me a subset of data without Honda for later use if needed
+Data_Without_Sedan <- subset(CarData, Type != "Sedan") #same for data with out sedans
+
+coul2 <- brewer.pal(5, "YlOrRd") 
+coul <- brewer.pal(5, "YlGn") 
+
+counts <- table(Data_Without_Honda$Make)
+barplot(counts, main="Car Distribution Make no Honda",
+   xlab="Make of Car",ylab="Number of Cars",col=coul)
+
+counts <- table(Data_Without_Sedan$Type)
+barplot(counts, main="Car Distribution Type No Sedan",
+   xlab="Type of Car",  ylab="Number of Cars", col=coul2)
+
+#lots more evenish data types might be useful later unsure currently 
+
+```
+do most cars have cruise control, upgraded speakers and leather seats??
+```{r}
+
+library(RColorBrewer)
+coul3 <- brewer.pal(5, "Set1") 
+coul2 <- brewer.pal(5, "Set3") 
+coul <- brewer.pal(5, "Spectral") 
+
+par(mfrow=c(1,3))
+
+counts <- table(CarData$Cruise)
+barplot(counts, main="Car Cruise control upgrade",
+   xlab="Make of Car",ylab="Number of Cars",col=coul,names=c("No Upgrade","Upgraded" ))
+
+counts <- table(CarData$Sound)
+barplot(counts, main="Car Sound System upgrade",
+   xlab="Type of Car",  ylab="Number of Cars", col=coul2,names=c("No Upgrade","Upgraded" ))
+
+
+counts <- table(CarData$Leather)
+barplot(counts, main="Car Leather Seat upgrade",
+   xlab="Type of Car",  ylab="Number of Cars", col=coul3,names=c("No Upgrade","Upgraded" ))
+
+
+```
+around 2/3 of cars have an upgrades in all types Unable to tell from this if the data we have got if it is a mix and match or all 3 have the upgrade or 2/3 etc
+wonder how good the spread if for cars with 0 - 3 upgrades 
+
+```{r}
+
+colnms=c("Cruise", "Sound", "Leather")
+CarData$Total_upgrades<-rowSums(CarData[,colnms])
+head(CarData)
+
+counts <- table(CarData$Total_upgrades)
+barplot(counts, main="Car Total Upgrades",
+   xlab="Number of Upgades",  ylab="Number of Cars", col=coul3,names=c("0","1","2","3" ))
+
+```
+So most cars have at least 1 upgrade with the majority having 2 upgrade if we analyze between the upgrades can we find a trend in upgrades to price increase
+
+Price, Mileage, Cylinder, Litre, Doors = numerical 
+```{r}
+attach(CarData)
+```
+```{r}
+library(ggplot2)
+
+ggplot(CarData, aes(x = factor(1), y = Price)) +
+  geom_boxplot(width = 0.4, fill = "white") +
+  geom_jitter(aes(color = Make, shape = Make), 
+              width = 0.1, size = 1) +
+  scale_color_manual(values = c("#00AFBB", "#E7B800","#006400","#00AFBB","#008080","#00FFFF","#330000")) + 
+  labs(x = NULL)   # Remove x axis label
+```
+We can see that the majority of cars fall under the 40k mark and the majority of Hondas are below 10.5 this could be indicative of why many Honda are in the data and few Mitsubishi due to Honda being cheaper
+There are quite a few values higher than the very next different car type I cant see anything indicative in the data to explain why Mitsubishi is getting near over 11.5 where the highest next Make is just under 10.8
+I think dropping Mitsubishi values of 11 and higher will provide better insight in to the data for reliability to price as after looking at the table data all cars over the 11 mark are Mitsubishi Lancer Convertibles 8 cylinders 4.6 liters with 3 upgrades its possible this is correct but after a bit of research unable to find any cars that are even a convertible Mitsubishi Lancer let alone 8 cylinders 4.6 liters] So I will remove them as I believe them to be in error outliers however can double check later to see if it changes anything significantly 
+
+```{r}
+Car_Price_Update <- subset(CarData, Price <= 11) 
+head(Car_Price_Update)
+```
+
+```{r}
+ggplot(Car_Price_Update, aes(x = factor(1), y = Price)) +
+  geom_boxplot(width = 0.4, fill = "white") +
+  geom_jitter(aes(color = Make, shape = Make), 
+              width = 0.1, size = 1) +
+  scale_color_manual(values = c("#00AFBB", "#E7B800","#006400","#00AFBB","#008080","#00FFFF","#330000")) + 
+  labs(x = NULL)   # Remove x axis label
+```
+This looks like a much better spread of data.
+
+###2. Use suitable graphs and plots to explore the relationship between variables
+
+Based on the individual variables explored some interesting aspects to look at would be total car upgrades variable that was made to see if this is a good measure does price increase for cars with upgrades?
+
+Do a plot of all variables see if anything sticks out for a good relationship 
+
+```{r}
+#start by plotting all the data we don't want model of car variable as told to ignore it as column 4 is model we drop it
+plot(CarData[,-4]) #this plots each variable against each the variable
+```
+Looking at that data there are not any nice relationships in relation to price the closet would be Litre and cylinders looking purely visually for positive relationships and mileage for negative relationship so might be indicative as Mileage decreases price increases and that fits with what I would assume would happen.
+
+
+I  want to look at relationships between the explanatory variables so my X variables to see if they are highly correlated will I see them in the final model for car price.
+so first I'll use a correlation matrix between all the variables 
+```{r}
+round(cor(CarData[, -(3:5)]), 2) #need to skip categorical data so Make model type
+```
+for the correlation between explanatory variable we can see that there is an overlap of 0.96 for cylinder and Litre so my end modal I would assume for one of these to drop out as they are so similar this indicated multicollinearity yet we can see almost no relationship between some of the other variables such as Mileage and Cylinder / Litre       
+
+I also want to look a bit further between at 
+Price and Mileage
+Price and Make
+Price and Type
+Price and Litre
+Price and Cylinder
+Price and Total upgrades
+and the 3 upgrades
+
+```{r}
+par(mfrow=c(2,2))
+plot(Litre, Price) #plot(x, y, …)
+LitrePrice <- lm(Price ~ Litre) #put it in own variable for Lm to use later
+abline(LitrePrice) #abline(v = y)
+
+plot(Mileage, Price)
+MileagePrice <- lm(Price ~ Mileage)
+abline(MileagePrice) 
+
+plot(Cylinder, Price)
+CylinderPrice <- lm(Price ~ Cylinder)
+abline(CylinderPrice) 
+
+plot(Cruise, Price)
+CruisePrice <- lm(Price ~ Cruise)
+abline(CruisePrice) 
+
+plot(Sound, Price)
+SoundPrice <- lm(Price ~ Sound)
+abline(SoundPrice) 
+
+plot(Leather, Price)
+LeatherPrice <- lm(Price ~ Leather)
+abline(LeatherPrice) 
+
+plot(Total_upgrades, Price)
+Total_upgradesPrice <- lm(Price ~ Total_upgrades)
+abline(Total_upgradesPrice) 
+
+plot(Doors, Price)
+DoorsPrice <- lm(Price ~ Total_upgrades)
+abline(DoorsPrice) 
+
+
+```
+Judging from these graphs there is a relationship between all these variables looked at and price to find out how strong looking at the summary apart from doors this is an odd variable we can see a good indication with Litre and cylinder 
+
+```{r}
+summary(LitrePrice)
+summary(MileagePrice)
+summary(CylinderPrice)
+summary(CruisePrice)
+summary(SoundPrice)
+summary(LeatherPrice)
+summary(Total_upgradesPrice)
+```
+Judging from this data looking at the R-squared values there is no strong relationships evident currently for prediction of price meaning we will need multiple predictors for prediction of price.
+
+```{r}
+coul <- brewer.pal(6, "Purples") 
+boxplot(Car_Price_Update$Price ~ Car_Price_Update$Make, col=coul, ylab = 'Car Price',xlab = 'Make of Car')
+
+```
+We can see from this analysis of car Price to make of Car that Mitsubishis are the most expensive cars with hyundai being the cheapest we can determine from this that the make of the car influences the price to some degree if I was to go more in-depth with this I would split by each make of Car or possibly type of car
+
+
+ 
+###Next, fit a linear model starting with all the main effects. Reduce your model to the most parsimonious final model. Make sure you look at the residuals
+ 
+ 
+first up start with my full model
+we want to drop variables to get lowest AIC  I will use AIC value and anvoa f values to pick variables to drop. I will be using anova due to categorical variables
+I will drop doors first due to the fact that its full of NA values in summary as its an odd data of 2 or 4 doors it behaves as numerical but is closer to categorical 
+
+I have chosen to not use Total upgrades in this first model as it was added and adds little value based on all being NA
+
+Start up by fitting the Maximal model
+
+```{r}
+#this is backward selection
+model1 = lm(Price ~ Mileage + Make + Type + Cylinder + Litre + Doors + Cruise + Sound + Leather, data = Car_Price_Update)
+anova(model1) #using anova as want to be bit more aggressive with removing variables and because I have categorical variables I will use this to drop out of the variables 
+summary(model1)
+```
+```{r}
+model2<-update(model1,~.-Doors) #removed doors variable 
+drop1(model2, test="F") #looking at what varibles I can remove if I take out cruise we will get a lower AIC overall and due to the F value being tiny
+#Leather
+```
+The next variables I will drop will be Cruise sound leather as these have small F values and I believe it to be a more aggressive approach based on F value expecially since doing this step by step
+```{r}
+model3<-update(model2,~.-Cruise) #removed Cruise variable 
+model3<-update(model3,~.-Leather) #removed Leather variable 
+model3<-update(model3,~.-Sound) #removed Sound variable 
+anova(model3)
+```
+ Now I've dropped all the super low F values I will start using AIC to reduce further 
+
+```{r}
+drop1(model3) #looking at what varibles I can remove if I take out cruise we will get a lower AIC overall and due to the F value being tiny
+```
+There are no more changes that can be made here as current AIC at -3824.9 as nothing I remove can make it lower I could have removed 1 to many AIC values I can run the auto step to double check later however I will remove cylinder manually as the multicollinearity identified above with Litre cylinder has lower correlation with price this will give me a simpler model overall in turn leaving me with AIC of -3817.3
+
+this leaves me with mileage make type and Litre as my variabels 
+
+I want to check the assumptions i've made using the residuals 
+```{r}
+par(mfrow=c(2,2))
+plot(model3)
+```
+Looking at the first plot there is curvature starting at around 10.5 and prior to 9.5 however as these are minor deviations based on all the models they are reasonable enough for standard assumptions of linear regression due to a even enough spread of data points below and above the red line. However a quadratic model may be a better fit here as we can see curvature in the first plot 
+
+I can see from the Normal QQ plot a reasonably tight fit so he assumption of normality applies here
+
+Cooks distance is not showing any outliers that impact negatively on my residuals in regards to leverage 
+
+
+##4. Try some different model fitting methods such as starting with a minimal model and adding terms to it (forward selection), or using the step-both-ways option in R. Compare your final models with your backwards selection model. You can also try some different ways to make decisions, such as compare your final, best model from using AIC, BIC, or, if you have done STAT202, Mallows Cp.
+
+```{r}
+#first try automatic backwards model  
+step(model1, direction = "backward")
+```
+so the variables removed are Doors and Cruise as compared to my step by step one the only difference is I also removed Leather and Cruise
+now to try it both ways final AIC of -3827.03 Now with manual removal of Cylinder my final AIC is -3820.2
+
+```{r}
+step(model1, direction = "both")
+
+```
+this made no difference to the backwards way so now I'll try with a
+a minimal model and adding terms to it (forward selection)
+
+
+```{r}
+
+#min model forward selection cylinder has been pre removed
+
+minmod_with_totalupgrades = lm(Price ~ 1, data = Car_Price_Update)
+step(minmod_with_totalupgrades, direction = "forward", # forwards
+ scope = list(lower = ~ 1,
+ upper = ~ Mileage + Make + Type +
+ Litre + Doors + Cruise + Sound + Leather + Total_upgrades))
+
+
+```
+```{r}
+
+#min model forward selection  with cylinder removed already
+
+minmod = lm(Price ~ 1, data = Car_Price_Update)
+step(minmod, direction = "forward", # forwards
+ scope = list(lower = ~ 1,
+ upper = ~ Mileage + Make + Type +
+ Litre + Doors + Cruise + Sound + Leather))
+
+
+```
+-3820.21 = forward step model without total_upgades
+-3823.15 = forwards step model with total_upgrades
+-3820.2- backward step model 
+The forward step model has a better AIC value as I've added Total_upgrades to it :)
+making my best model 
+
+lm(formula = Price ~ Make + Litre + Type + Mileage + Cylinder + 
+    Total_upgrades, data = Car_Price_Update)
+
+```{r}
+anova(model1, minmod_with_totalupgrades)
+```
+```{r}
+
+best_model <- lm(formula = Price ~ Make + Litre + Type + Mileage + 
+    Total_upgrades, data = Car_Price_Update)
+anova(best_model)
+summary(best_model)
+
+#dopping cylinder and total_upgrades to see any change based on F value being low for them
+
+```
+ 
+ 5. Discuss what your final, best model means – what effects car price and in what way?
+
+ 
+My final best model for predicting the price of cars is: Price =  Make + Litre + Type + Mileage + Total_upgrades  with the associated coefficient being the Estimates shown within the summary above. The largest predictors that effect care price are Litre and make of the car followed by Mileage where as type and Total_upgrades added extra strength to the model but are not as important. Overall my best model is a balance between having a smallish number of predictors whilst adding enough variables to make good predictions. If I was to build on this Make of cars would be split due to this being an influence identified earlier that this has a big impact on the price.
+The model has a 0.9488 R squared value and a low P value and a Residual standard error pf 0.09013 indicating to me that overall this is a good model for predicting price 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
