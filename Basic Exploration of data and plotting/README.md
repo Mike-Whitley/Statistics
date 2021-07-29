@@ -1,4 +1,4 @@
-# Assignment one for stats315
+# Assignment one - stats315
 
 ### This assignment covers identification of useful predictors in a given dataset and basic graphing of that data using R code
 
