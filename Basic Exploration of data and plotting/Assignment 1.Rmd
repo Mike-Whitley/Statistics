@@ -1,0 +1,187 @@
+---
+title: "Assignment 1"
+author: "Mike Whitley 55503405"
+date: "07/03/2021"
+output: word_document
+---
+
+
+### TODO
+check with lecturer on plots and explination
+fix up all paragraphs explination these are just place holders currently 
+
+
+
+
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+###Question 1
+Use the data in the file, bodyfat.txt to explore what are useful predictors of body fat. The data is
+percentage of body fat, age, weight, height, and body circumference measurements (e.g., abdomen)
+are recorded for 252 men. Body fat, a measure of health, is estimated through an underwater
+weighing technique. This is time consuming and expensive to undertake and it would be preferable to
+be able to estimate it with easy-to-measure variables which use only scales or a measuring tape.
+
+
+```{r}
+bodyfat <- read.delim("bodyfat.txt") #read in the bodyfat textfile
+head(bodyfat)
+```
+The variables in the file, bodyfat.txt, are:
+Person Number
+Percent body fat
+Age (yrs)
+Weight (lbs)
+Height (inches)
+Neck circumference (cm)
+Chest circumference (cm)
+Abdomen circumference (cm)
+Hip circumference (cm)
+Thigh circumference (cm)
+Knee circumference (cm)
+Ankle circumference (cm)
+Extended biceps circumference (cm)
+Forearm circumference (cm)
+Wrist circumference (cm)
+
+
+##a. What measures are well correlated with body fat? Create a correlation and matrix plot to display this information.
+
+```{r}
+cor(bodyfat[, -1]) # correlation matrix for bodyfat excluding the person field 
+```
+```{r}
+pairs(bodyfat[, -1]) #matrix plot for bodyfat excluding the person field 
+```
+
+
+
+##b. By looking at the graphs and correlations, what are the two most useful measures of body fat?
+
+#chest abdomen hip thigh weight - these look quite linear when looking graphically 
+
+by looking at the matrix plot we can identity these following variables visually show a stronger correlation to body fat
+
+chest       0.70288516
+abdomen     0.81370622
+hip         0.62569993
+thigh       0.56128438 
+weight      0.61315611
+
+Looking at these specific variables using the correlation matrix we can see the variables of abdomen 
+and chest show the highest strong positive correlation to body fat
+
+##c. Create a sensible 3-D plot with these two measures and body fat. Describe what information is in the graph.
+
+```{r}
+library(scatterplot3d)
+with(bodyfat, scatterplot3d(Abdomen, Chest, BodyFat, type = "h", color="blue", angle = 250, pch = 21,xlab="Abdomen (cm)", ylab="Chest (Cm)",zlab = "Bodyfat (%)", col.grid = "red",main="Body Fat relationship to Chest and Abdomen")) # angle 1 
+
+with(bodyfat, scatterplot3d(Abdomen, Chest, BodyFat, type = "h", color="blue", angle = 100, pch = 21,xlab="Abdomen (cm)", ylab="Chest (Cm)",zlab = "Bodyfat (%)",col.grid = "red",main="Body Fat relationship to Chest and Abdomen")) # angle 2 
+
+with(bodyfat, scatterplot3d(Abdomen, Chest, BodyFat, type = "h", color="blue", angle = 50, pch = 21,xlab="Abdomen (cm)", ylab="Chest (Cm)",zlab = "Bodyfat (%)",col.grid = "red",main="Body Fat relationship to Chest and Abdomen")) # angle 3 
+
+#three different angles to for clarity simple to understand an increasing trend for bodyfat % increase with relation to chest and abdomen size 
+
+```
+In this graph we can see a close linear trend as the size of the chest and abdomen increase the body fat in turn increases 
+
+
+```{r}
+library("plot3D")
+
+#3D Regression Plotting
+
+
+#code taken from https://rpubs.com/pjozefek/576206
+
+# set the x, y, and z variables
+x <- bodyfat$Chest
+y <- bodyfat$BodyFat
+z <- bodyfat$Abdomen
+
+# Compute the linear regression 
+fit <- lm(z ~ x + y)
+
+# create a grid from the x and y values (min to max) and predict values for every point
+# this will become the regression plane
+grid.lines = 40
+x.pred <- seq(min(x), max(x), length.out = grid.lines)
+y.pred <- seq(min(y), max(y), length.out = grid.lines)
+xy <- expand.grid( x = x.pred, y = y.pred)
+z.pred <- matrix(predict(fit, newdata = xy), 
+                 nrow = grid.lines, ncol = grid.lines)
+
+# create the fitted points for droplines to the surface
+fitpoints <- predict(fit)
+
+# scatter plot with regression plane
+scatter3D(x, y, z, pch = 21, cex = 1,colvar = NULL, col="red",
+          theta = 20, phi = 10, bty="b",
+          xlab = "Chest", ylab = "Body Fat", zlab = "Abdomen",  
+          surf = list(x = x.pred, y = y.pred, z = z.pred,  
+                      facets = TRUE, fit = fitpoints, col=ramp.col (col = c("dodgerblue3","blue"), n = 300, alpha=0.9), border="black"), main = "Body Fat")
+
+#another 3D plot given with with a 3D regression line shows overall increase 
+```
+##d. Use the variable age to group the data into two age-groups (you can choose what these groups are). Use side-by-side box plots, or some better graphic, to compare body fat between the two age-groups. 
+
+```{r}
+#split in to two age groups one being below the age of 45 where middle age starts and the other middle age and higher this also gives around half to each split
+fortyfive_or_younger <- subset(bodyfat, Age < 45) #gives me a df of all the ages 45 and lower for interest
+summary(fortyfive_or_younger)
+```
+```{r}
+fortyfive_or_older <- subset(bodyfat, Age >= 45) #gives me a df of all the ages 45 and over for interest
+summary(fortyfive_or_older)
+```
+```{r}
+# box-plot of CBL for each Island using formula interface
+with(bodyfat, boxplot(BodyFat ~ Age >= 45, names=c("Age under 45","Age over 45" ),main="Middle Age bodyfat comparision",xlab="Individuals Age Group",ylab="BodyFat (%)"))
+# IF I want this to look any nicer need to find the documentation on this with function? for box plot  to change labels 
+
+```
+##e. Revisit your correlation analysis when the data was looked at altogether, and repeat this analysis for the two groups separately. Do any of your findings change when the age groups were looked at separately?
+
+#repeated steps a and b with the seperated data using our two variables fortyfive_or_younger and fortyfive_or_older and defined above
+
+```{r}
+pairs(fortyfive_or_younger[, -1]) #matrix plot for bodyfat excluding the person field for the grouping age of 45 or younger
+pairs(fortyfive_or_older[, -1]) #matrix plot for bodyfat excluding the person field  for the grouping age of 45 or older
+```
+we can see for the the grouping of under 45 it is easier to tell which 2 variables have the closet relationship as we can see that chest, abdomen, thigh and weight are all very similar in a more linear pattern where as with over the age of 45 grouping its slightly different with weight, neck, chest abdomen, hip, thigh all looking very similar.
+
+```{r}
+cor(fortyfive_or_younger[, -1]) # correlation matrix for bodyfat excluding the person field for the grouping age of 45 or younger
+cor(fortyfive_or_older[, -1]) # correlation matrix for bodyfat excluding the person field for the grouping age of 45 or older
+```
+Looking at the identified variables for the grouping of under the age of 45. Abdomen and Thigh are the two variables with the highest correlation however Chest is very close to thigh with a difference of only 0.003053. for the over the age of 45 grouping Abdomen and Chest are the two variables with the highest correlation. This indicates that for the original data it is being skewed by the individuals over the age of 45 for the chest measurement.
+
+```{r}
+bodyfat$underAge45 <- with(bodyfat, ifelse(Age<45, 1, 0)) #if the individual is in the group of under 45 assign a 1 else assign a 0
+```
+
+```{r}
+# if they are under 45 its red else its blue 
+with(bodyfat, scatterplot3d(Abdomen, Chest, BodyFat, type = "h", angle = 250,xlab="Abdomen (cm)", ylab="Chest (Cm)",zlab = "Bodyfat (%)", main="Body Fat relationship to Chest and Abdomen by Age", #plot 3
+color = ifelse(underAge45 == 1, "red", "blue"),
+pch = ifelse(underAge45 == 1, "o", "x")))
+
+
+with(bodyfat, scatterplot3d(Abdomen, Chest, BodyFat, type = "h", angle = 60,xlab="Abdomen (cm)", ylab="Chest (Cm)",zlab = "Bodyfat (%)",main="Body Fat relationship to Chest and Abdomen by Age", #plot 3
+color = ifelse(underAge45 == 1, "red", "blue"),
+pch = ifelse(underAge45 == 1, "", "x")))
+
+#two different angles given for clarity
+```
+we can see that there is a slight difference when we split by age groupings. If the individual is older than 45 it shows a higher body fat relationship with Abdomen and Chest as shown by the blue x and this fits with conventional logic of losing muscle mass as we age. However it still keeps the overall trend of our combined data. 
+
+
+
+
+
+
+
