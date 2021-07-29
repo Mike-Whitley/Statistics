@@ -6,4 +6,4 @@
 ### techniques: PCA, Factor analysis, Matrix algebra  
 
 Assignment 3.pdf - submission file cleaned
-Assignment 2.Rmd - R Markdown file created using RStudio (open using R studio)
+Assignment 3.Rmd - R Markdown file created using RStudio (open using R studio)
