@@ -5,5 +5,6 @@
 ### Data: bodyfat.txt
 ### techniques: correlation, plotting(box and 3D), Eigenvalues and Eigenvectors
 
-Assignment-1.pdf - submission file cleaned
+Assignment-1.pdf - submission file cleaned  
+
 Assignment 1.Rmd - R Markdown file created using RStudio (open using R studio)
