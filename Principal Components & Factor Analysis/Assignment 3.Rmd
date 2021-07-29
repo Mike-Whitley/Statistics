@@ -1,0 +1,209 @@
+---
+title: "Assignment 3"
+output: word_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+```{r}
+#install.packages('tidyverse')
+#install.packages("tidyr")
+#install.packages('factoextra')
+#install.packages('FactoMineR')
+#install.packages('dplyr')
+```
+```{r}
+library(tidyverse)
+library("tidyr")
+library("factoextra")
+library("FactoMineR")
+library("dplyr")
+
+```
+
+
+```{r}
+#read all the files in to dataframe for easy access
+header<-read.table('Nordic.txt',nrows = 1, header = FALSE, stringsAsFactors = FALSE)
+nordic<-read.table('Nordic.txt', skip = 1, header = FALSE)
+colnames(nordic)<-unlist(header)
+nor<-unite(nordic,"first_Name_Nat",first,Name,Nat)
+
+```
+
+##A) Nordic Combination (max. 4 marks)
+The file Nordic.txt contains the result of the Sochi 2014 Nordic Combined 10k/Normal Hill event. The
+competition is decided by who performs the best in a combination of ski jumping and cross-country skiing.
+The variable SkiJump is the ski jump score and CrossCountry is the cross-country time in seconds
+Source: http://www.sochi2014.com/en/nordic-combined-ind-gund-nh-10-km-cross-c-free-race
+
+1. Perform the principal component analysis on the correlation matrix.
+
+```{r}
+#Completes PCA using an inbuilt function so in looks nice other ways are also completed in code found at bottom
+attach(nor)
+final_data2 <- nor[, c(1,2,3)]
+rownames(final_data2) <- nor[,1]
+df <- final_data2[, c(2,3)]
+res.pca <- PCA(df, graph = FALSE)
+fviz_pca_biplot(res.pca, repel = TRUE, labelsize=2, xlab='PCA 1', ylab='PCA 2')
+```
+#2) One way of combining the scores is to use the first principal component. Why might this be a good idea?
+
+The first principal component PC1 best accounts for the shape of the point swarm and it explains the greatest amount of variance in the original features meaning that we preserve the greatest amount of information of our dataset
+
+#3) If the competitors were ranked based on the first principal component, who would have won the bronze medal?
+
+The Top three based on PCA1 is
+1st: Eric frenzel
+2nd: Akido Watabe
+3rd: Johannes Rydzek
+
+So The bronze medal goes to Johannes Rydzek
+
+#4)  What do you think the second principal component represents?
+
+The second principal component (PC2) is oriented such that it reflects the second largest source of variation in the data while being orthogonal to the first Principal component in this case it reflects just under 50% of the variance. PC2 also passes through the average point. Specifically for our data the loadings shows that with both our values of PCA2 being -0.7071068 this implies on our graph the more negative the value the lower ski jump score and cross country time.
+
+PCA1                        PCA2
+skijump -7071               ski jump - 0.7071
+cross country 0.7071        cross country -0.7071
+
+
+#5) Are the data adequately summarized by one principal component?
+No as one PCA1 only summarizes around 50.5% of the proportional variance and we cant make many correct inferences based on this.
+
+
+
+#6)The IOC wants to introduce a new snowmobile half-pipe event and is considering dropping the
+#Nordic combined on the grounds that ability in cross-country skiing and ski jumping are more or
+#less equivalent. Do you think this is reasonable in terms of correlation?
+
+I think this is a unreasonable assumption to be made as the correlation between the two variables is -0.01059985 this is a incredibly weak negative relationship 
+meaning the two variables are almost not linearly related at all so they are infact not more of less equivalent 
+
+
+#7. Would it be better to run a PCA on the covariance matrix instead of the correlation matrix in this
+#example? Who would be the gold medallist in that case (first PCA component on the covariance
+#matrix) mean?
+
+Using the correlation matrix is equivalent to standardizing each of the variables (to mean 0 and standard deviation 1) where as covariance requires scaling if we want to standardize our results assuming that we don't manually scale then the Correlation matrix is better as its less work required and has better readability overall along with the main factor being because we have two different unit measurements and without scaling, the weighting on values with a high standard deviation will skew the axis leading to incorrect information in the end. This is evident in the change of gold medalists from Eric frenzel to Alessandro PITTIN because Cross country time being larger has a higher impact on the final results
+
+The gold medalist is the person with the most negative PC1 value for covariance matrix: Alessandro PITTIN 
+
+```{r}
+hep.PC.cor = prcomp(nor[,2:3], scale=TRUE) #correlation this means that each value is standardized i.e mean 0 sd 1 so we set Scale=True
+hep.PC.cov = prcomp(nor[,2:3], scale=FALSE) #covaraince w/0 standardization  so Scale=False
+biplot(hep.PC.cov) #covariance #both preform centering 
+hep.PC.cov$x
+biplot(hep.PC.cor)  #correlation #best one
+#hep.PC.cor$x
+
+nor2 <- cbind(nor, hep.PC.cov$x)
+head(arrange(nor2, (PC1)), 3) #want the most negative PCA1 for gold medal
+
+```
+
+################################################################QUESTION 2 ####################################################################################################
+
+To obtain a simplified rating scheme of police applicants, the variables should be categorised into groups
+that characterise different aspects of the applicants abilities.
+
+Perform Factor Analysis to allocate the variables into several groups:
+
+```{r}
+FA <- read.csv("Police.csv", header=TRUE) #Input the dataset into R
+sFA <- scale(FA, center=TRUE, scale=TRUE) # then center and scale the factors.
+```
+
+
+#1) How many factors can be found? (using hypotheses testing with p <= 0:05)
+```{r}
+round(sapply(1:9, function(i) factanal(sFA, factors=i)$PVAL), 3) < 0.05   # These are the P values we want to keep all below 0.05 and then 1 that is just above
+```
+there are 5 factors that can be found from this data set.
+
+
+#2) Which variables are grouped by the first two factors? (e.g. threshold loading >= 0.5)
+
+```{r}
+
+fa <- factanal(sFA, factors = 5) #scaled used for factor analysis #3 factors 
+apply(fa$loadings[,c(1,2,3,4,5)] >= 0.5 , 2, function(x) names(FA)[x]) #keeps fist three factors greater than 0.5
+print(fa$loadings, cutoff= 0.5)
+```
+
+We can see that for factor 1 "WEIGHT","THIGH" and "FAT" are grouped together and for factor 2 "HEIGHT","WEIGHT","SHLDR","PELVIC" and "BREATH" are grouped together.
+
+
+#3. To reduce the time and effort of obtaining so many variables, we would rather not measure the
+#diastolic blood pressure. Just measuring the resting pulse rate should be sufficient. Do you agree?
+#(Why or why not...)
+
+I disagree that just reading pulse will be sufficient as there is no factor that contains both pulse rate and diastolic blood pressure. As factor analysis groups correlated variables together based on common variance if they are both within the same factor it implies they share an underlying relationship in this case they do not. therefore just measuring resting pulse rate is not sufficient.
+
+#4. When we want to separate huge athletic applicants from huge non-athletic applicants, which factor
+#scores can be used?
+
+We can use factor 1 and factor 2 to determine which applicants are considered huge based on variables such as weights heights shoulder and pelvic size and then we can cross reference with applicants in factor 3 to determine if they are athletic or not based on RECVR and speed variables.
+
+Question 1 Addition:
+
+```{r}
+attach(nor)
+# mean-adjusted values # we need to do this as we want a s.d. of one and a mean of zero for PCA #its value - mean / Sd? and we want to scale as they are differnt measures
+nor$SkiJump_adj = (nor$SkiJump - mean(nor$SkiJump))/sd(SkiJump)
+nor$CrossCountry_adj = (nor$CrossCountry - mean(nor$CrossCountry))/sd(CrossCountry)
+```
+
+```{r}
+# calculate correlation matrix and eigenvectors/values
+(cm = cor(nor[,2:3]))         #as we are using correlation matrix this is equilivant of standardizing each of the variables to mean of 0 and sd of 1
+
+```
+
+```{r}
+#find the eigan directions
+(e = eigen(cm))
+```
+
+```{r}
+s1 = e$vectors[2,1] / e$vectors[1,1] # PC1                  
+s2 = e$vectors[2,2] / e$vectors[1,2] # PC2
+
+#pca1 -variable 1 skijump is negatively correlated and crosscountry time is positive correlated 
+#this means that for PCA the lower its value the better(higer) skijump score they got and lower cross country time
+
+
+plot(nor$SkiJump_adj, nor$CrossCountry_adj, asp=T, pch=16, xlab='SkiJump_adj', ylab='CrossCountry_adj')
+abline(a=0, b=s1, col='blue') #pca 1st dimension
+abline(a=0, b=s2) #pca 2nd dimension 
+
+#as this is currently based on Correlation matrix why is the mean and SD not 0 and 1 respectivly
+
+```
+
+
+```{r}
+# PCA data = rowFeatureVector (transposed eigenvectors) * RowDataAdjust (mean adjusted, also transposed)
+feat_vec = t(e$vectors)
+row_data_adj = t(nor[,4:5])
+final_data = data.frame(t(feat_vec %*% row_data_adj))
+names(final_data) = c('PCA1','PCA2')
+
+
+#final_data
+
+plot(final_data, asp=T, xlab='PCA 1', ylab='PCA 2', pch=16)
+text(final_data, labels=c(nor$first_Name_Nat), cex=0.5)
+
+final_data$Name = nor$first_Name_Nat
+
+```
+
+
+
+
+
